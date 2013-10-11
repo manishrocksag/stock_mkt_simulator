@@ -1,0 +1,152 @@
+import QSTK.qstkutil.qsdateutil as du
+import QSTK.qstkutil.tsutil as tsu
+import QSTK.qstkutil.DataAccess as da
+
+import numpy as np
+import datetime as dt
+import matplotlib.pyplot as plt
+import pandas as pd
+import math
+
+'''
+        A Python function that can simulate and assess the performance of a 4 stock portfolio.
+        Inputs to the function include:
+        Start date
+        End date
+        Symbols for for equities (e.g., GOOG, AAPL, GLD, XOM)
+        Allocations to the equities at the beginning of the simulation (e.g., 0.2, 0.3, 0.4, 0.1)
+        The function should return:
+        Standard deviation of daily returns of the total portfolio
+        Average daily return of the total portfolio
+        Sharpe ratio of the total portfolio
+        Cumulative return of the total portfolio.
+
+        
+        Create a for loop (or nested for loop) that enables to test every "legal" set of allocations to the 4 stocks. Keep track of the "best" portfolio, and print it out at the end.
+        "Legal" set of allocations means: The allocations sum to 1.0. The allocations are in 10% increments.
+        Example legal allocations: [1.0, 0.0, 0.0, 0.0], [0.1, 0.1, 0.1, 0.7]
+        "Best" portfolio means: Highest Sharpe Ratio.
+
+
+
+'''
+def simulate(ls_symbol,dt_start,dt_end,allocation):
+
+    '''
+    (list of String,date frame,date frame,list of floats) -> float,float,float
+    ,float
+    Returns ths sharpe ratio,average daily returns,standard deviation,cumulative returns
+    of the portfolio of the inputs symbols taken from input start date to end date with
+    given allocations
+
+    >>> Start Date: January 1, 2010
+        End Date: December 31, 2010
+        symbols: ['AXP', 'HPQ', 'IBM', 'HNZ']
+        Optimal Allocations:  [0.0, 0.0, 0.0, 1.0]
+        simulate(symbols,Start Date,End Date,Optimal Allocations)
+        Sharpe Ratio: 1.29889334008
+        Volatility (stdev of daily returns): 0.00924299255937
+        Average Daily Return: 0.000756285585593
+        Cumulative Return: 1.1960583568
+
+    '''
+    
+    dt_timeofday=dt.timedelta(hours=16)
+    ldt_timestamps=du.getNYSEdays(dt_start,dt_end,dt_timeofday)
+    dataObj=da.DataAccess('Yahoo',cachestalltime=0)
+    ls_keys=['open','high','low','close','volume','actual_close']
+    data=dataObj.get_data(ldt_timestamps,ls_symbol,ls_keys)
+    d_data=dict(zip(ls_keys,data))
+    na_price=d_data['close'].values
+    normalized_price=na_price/na_price[0,:]
+    #print na_retns
+    price=normalized_price*allocation
+    #print price
+    daily_vals=price.sum(axis=1)
+    na_retns=daily_vals.copy()
+    tsu.returnize0(na_retns)
+    #print daily_vals
+    meanValue = na_retns.mean()
+    stDev = na_retns.std()
+    cumRet = 1 + daily_vals.sum()
+    avgDailyRet = meanValue 
+    sharpe = meanValue/ stDev * np.sqrt(252)
+    #print meanValue
+    #print stDev
+    #print cumRet
+    #print avgDailyRet
+    #print sharpe
+    return sharpe,avgDailyRet,stDev,cumRet
+    #print normalized_price
+    #print type(na_price)
+    #print len(na_price)
+
+def plot(ls_symbols,normalized_price,ldt_timestamps):
+    '''
+    (list of symbols,matrix of floats,list of dates)->plot
+    
+    Returns a plot with dates on the x_axis and adjusted close
+    on the y axis.
+    '''
+    
+    plt.clf()
+    plt.plot(ldt_timestamps, na_price)
+    plt.legend(ls_symbols)
+    plt.ylabel('Adjusted Close')
+    plt.xlabel('Date')
+    plt.savefig('adjustedclose.pdf', format='pdf')
+    
+def main():
+    '''
+    The functions takes the input symbol,start date,end date from the user and
+    generates all allocations in range 0-1 of the input symbol.With this allocations function
+    simulate(ls_symbol,dt_start,dt_end,allocation) is called and all parameters
+    sharpe ratio,meanValue,stdDeviation,cumDailyRet is calculated.Finally the
+    allocation with highest sharpe ratio is printed
+    '''
+    allocate=[]
+    ls_symbol=[]
+    max_sharp=0.0
+    for i in range(0,4):
+        z=raw_input("Enter the input symbol for the stock by one in CAPS:")
+        ls_symbol.append(z)
+    x=raw_input("Enter the starting year yyyy")
+    y=raw_input("Enter the starting month mm")
+    z=raw_input("Enter the starting day dd")
+    a=raw_input("Enter the ending year yyyy")
+    b=raw_input("Enter the ending month mm")
+    c=raw_input("Enter the ending day dd")
+    dt_start=dt.datetime(int(x),int(y),int(z))
+    dt_end=dt.datetime(int(a),int(b),int(c))
+    for i in range(0,11):
+        for j in range(0,11):
+            for k in range(0,11):
+                for l in range(0,11):
+                    if(i+j+k+l)==10:
+                        allocate=[]
+                        allocate.append(i/10.0)
+                        allocate.append(j/10.0)
+                        allocate.append(k/10.0)
+                        allocate.append(l/10.0)
+                        #print allocate
+                        sharp,avgDailyRet,stDev,cumRet=simulate(ls_symbol,dt_start,dt_end,allocate)
+                        if(sharp>max_sharp):
+                            max_sharp=sharp
+                            max_i=i
+                            max_j=j
+                            max_k=k
+                            max_l=l
+                            avg=avgDailyRet
+                            dev=stDev
+                            cum=cumRet
+
+    print ls_symbol
+    print dt_start
+    print dt_end
+    print max_sharp,avg,dev,cum
+    print max_i,max_j,max_k,max_l
+
+if __name__ == '__main__':
+    main()
+
+    
